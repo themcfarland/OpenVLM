@@ -1,0 +1,106 @@
+version: "2"
+run:
+  modules-download-mode: readonly
+linters:
+  enable:
+    - containedctx
+    - forcetypeassert
+    - ginkgolinter
+    - gochecknoglobals
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - misspell
+    - nestif
+    - nlreturn
+    - noctx
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+    - wsl_v5
+  settings:
+    govet:
+      enable-all: true
+      settings:
+        printf:
+          funcs:
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+        shadow:
+          strict: false
+    misspell:
+      locale: US
+    nestif:
+      min-complexity: 7
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - golint
+        text: should not use dot imports
+        source: ginkgo|gomega
+      - linters:
+          - gosec
+        text: G110|G115|G601|G404|G204|G306
+      - linters:
+          - govet
+        text: "shadow:"
+        path: "_test\\.go$"
+      - linters:
+          - govet
+        text: "fieldalignment:"
+        path: "_test\\.go$"
+      - linters:
+          - wrapcheck
+        text: sig:.*\.Close\(\)
+      - linters:
+          - wrapcheck
+        text: sig:.*\.Run\(\)
+      - linters:
+          - wrapcheck
+        text: sig:.*\.Shutdown\(
+      - linters:
+          - wrapcheck
+        text: "sig:.*github\\.com/openmanet/openmanetd"
+      - linters:
+          - wrapcheck
+        text: "sig:.*github\\.com/digineo/go-uci"
+      - linters:
+          - wrapcheck
+        text: "sig:.*tailscale\\.com"
+      - linters:
+          - gocognit
+          - nestif
+          - goconst
+          - noctx
+          - forcetypeassert
+          - staticcheck
+          - unparam
+        path: "_test\\.go$"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - node_modules/
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - node_modules/

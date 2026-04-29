@@ -1,0 +1,95 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test:*)",
+      "Bash(make test-frontend:*)",
+      "Bash(find /workspaces/openvlm -type f -name *.proto)",
+      "Bash(ls -la /workspaces/openvlm/*.go)",
+      "Bash(go vet:*)",
+      "Bash(make lint:*)",
+      "Bash(make lint-go:*)",
+      "Bash(go build:*)",
+      "Bash(go mod:*)",
+      "Bash(claude plugin:*)",
+      "Read(//go/pkg/mod/**)",
+      "Bash(go doc:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(go test:*)",
+      "Bash(make integration-test:*)",
+      "Bash(make build:*)",
+      "Bash(grep -E \"^-.*\\\\.go$\")",
+      "Read(//usr/bin/**)",
+      "Bash(go get:*)",
+      "Read(//home/vscode/go/pkg/mod/github.com/**)",
+      "Bash(ls /workspaces/openvlm/internal/comms/rtp/*test*.go)",
+      "Bash(/go/bin/benchstat:*)",
+      "Bash(make fmt *)",
+      "Bash(awk '{print $NF}')",
+      "mcp__context7__query-docs",
+      "Bash(grep -E \"\\\\.jsx?$\")",
+      "Bash(grep \"\\\\.go$\")",
+      "Bash(grep -E \"\\\\.\\(go\\)$\")",
+      "Read(//home/vscode/.claude/plans/**)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "Bash(go version *)"
+    ],
+    "additionalDirectories": [
+      "/workspaces/openvlm/.claude/skills"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty'); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(internal/api/|frontend/src/gen/|internal/database/models/)'; then echo \"Do not edit generated files. Edit the proto source or SQL and run make buf / make sqlc-gen.\" >&2; exit 2; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.command // empty'); if echo \"$CMD\" | grep -qE '\\bgo build\\b' && ! echo \"$CMD\" | grep -q 'make'; then if [ -z \"$(ls -A /workspaces/openvlm/static 2>/dev/null)\" ]; then echo 'Warning: static/ is empty. Use make build instead of go build directly, or run make frontend first.' >&2; fi; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty'); [ -n \"$FILE\" ] && [[ \"$FILE\" == *.go ]] && gofmt -w \"$FILE\" 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  }
+}
