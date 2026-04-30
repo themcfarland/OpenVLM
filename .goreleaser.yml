@@ -88,3 +88,5 @@ archives:
       formats: [zip]
     files:
       - README.md
+changelog:
+  use: github-native
