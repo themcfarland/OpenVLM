@@ -5,6 +5,8 @@ package hidx
 import (
 	"errors"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -68,7 +70,7 @@ func TestLinuxBackend_EnumerateMatchingDevice(t *testing.T) {
 		"bus/usb/devices/1-1.2/1-1.2:1.3/0003:0D8C:0012.0001/hidraw/hidraw7": &fstest.MapFile{Mode: fs.ModeDir},
 	}
 
-	b := &linuxBackend{sysRoot: sys, devRoot: "/dev"}
+	b := &linuxBackend{sysRoot: sys, devRoot: devDir}
 
 	got, err := b.Enumerate(0x0D8C, 0x0012)
 	require.NoError(t, err)
@@ -93,7 +95,7 @@ func TestLinuxBackend_EnumerateFiltersOutNonMatchingVID(t *testing.T) {
 		"bus/usb/devices/2-1/idProduct": &fstest.MapFile{Data: []byte("5678\n")},
 	}
 
-	b := &linuxBackend{sysRoot: sys, devRoot: "/dev"}
+	b := &linuxBackend{sysRoot: sys, devRoot: devDir}
 
 	got, err := b.Enumerate(0x0D8C, 0x0012)
 	require.NoError(t, err)
@@ -113,7 +115,7 @@ func TestLinuxBackend_EnumerateSkipsDevicesWithoutHidraw(t *testing.T) {
 		// No interface dir, no hidraw child.
 	}
 
-	b := &linuxBackend{sysRoot: sys, devRoot: "/dev"}
+	b := &linuxBackend{sysRoot: sys, devRoot: devDir}
 
 	got, err := b.Enumerate(0x0D8C, 0x0012)
 	require.NoError(t, err)
@@ -126,7 +128,7 @@ func TestLinuxBackend_EnumerateSkipsDevicesWithoutHidraw(t *testing.T) {
 func TestLinuxBackend_EnumerateMissingSysfs(t *testing.T) {
 	t.Parallel()
 
-	b := &linuxBackend{sysRoot: fstest.MapFS{}, devRoot: "/dev"}
+	b := &linuxBackend{sysRoot: fstest.MapFS{}, devRoot: devDir}
 
 	_, err := b.Enumerate(0x0D8C, 0x0012)
 	require.Error(t, err)
@@ -147,12 +149,61 @@ func TestLinuxBackend_EnumerateSkipsMalformedIDs(t *testing.T) {
 		"bus/usb/devices/good/good:1.0/0003:0D8C:0012.0001/hidraw/hidraw3": &fstest.MapFile{Mode: fs.ModeDir},
 	}
 
-	b := &linuxBackend{sysRoot: sys, devRoot: "/dev"}
+	b := &linuxBackend{sysRoot: sys, devRoot: devDir}
 
 	got, err := b.Enumerate(0x0D8C, 0x0012)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "/dev/hidraw3", got[0].Path)
+}
+
+// TestLinuxBackend_EnumerateFollowsSymlinkedDeviceDirs pins the shape real
+// sysfs actually has: every entry under /sys/bus/usb/devices is a symlink
+// into /sys/devices/..., never a directory. fstest.MapFS cannot express
+// symlinks (its implicit parents report IsDir() == true), so this test
+// builds a miniature sysfs on the real filesystem and walks it through
+// os.DirFS exactly as production does. A regression here means Enumerate
+// finds zero devices on every real Linux host.
+func TestLinuxBackend_EnumerateFollowsSymlinkedDeviceDirs(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	// The real device directory lives under /sys/devices/...
+	devTarget := filepath.Join(root, "devices", "pci0000:00", "usb1", "1-1.2")
+	hidrawDir := filepath.Join(devTarget, "1-1.2:1.3", "0003:0D8C:0012.0001", "hidraw", "hidraw7")
+	require.NoError(t, os.MkdirAll(hidrawDir, 0o755))
+
+	files := map[string]string{
+		"idVendor":     "0d8c\n",
+		"idProduct":    "0012\n",
+		"serial":       "OpenVLM-1\n",
+		"product":      "OpenVLM\n",
+		"manufacturer": "BuildsByShane\n",
+	}
+	for name, data := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(devTarget, name), []byte(data), 0o644))
+	}
+
+	// /sys/bus/usb/devices/1-1.2 is a relative symlink to the device dir,
+	// exactly as the kernel lays it out.
+	linkDir := filepath.Join(root, "bus", "usb", "devices")
+	require.NoError(t, os.MkdirAll(linkDir, 0o755))
+	require.NoError(t, os.Symlink(
+		filepath.Join("..", "..", "..", "devices", "pci0000:00", "usb1", "1-1.2"),
+		filepath.Join(linkDir, "1-1.2")))
+
+	b := &linuxBackend{sysRoot: os.DirFS(root), devRoot: devDir}
+
+	got, err := b.Enumerate(0x0D8C, 0x0012)
+	require.NoError(t, err)
+	require.Len(t, got, 1, "symlinked device dir must still be enumerated")
+
+	d := got[0]
+	assert.Equal(t, "/dev/hidraw7", d.Path)
+	assert.Equal(t, uint16(0x0D8C), d.VendorID)
+	assert.Equal(t, uint16(0x0012), d.ProductID)
+	assert.Equal(t, "OpenVLM-1", d.SerialNumber)
 }
 
 // silence unused error import on platforms that strip tests.

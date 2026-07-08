@@ -48,7 +48,7 @@ GOOS=linux CGO_ENABLED=0 make build
 
 ## License
 
-[GNU General Public License v3.0](LICENSE).
+[CERN Open Hardware Licence Version 2](LICENSE).
 
 ## Contributing
 

@@ -217,6 +217,9 @@ manufacturer-string are part of the device's identity.`
 // Success and progress messages
 // =====================================================================
 
+// genericDeviceName is the fallback label for a device with no USB serial.
+const genericDeviceName = "OpenVLM device"
+
 // displayName is the user-facing name for a device. Prefer the USB serial
 // number (stable across plug-in/plug-out); fall back to a generic "OpenVLM
 // device" label when the device has no serial, since the OS device path is
@@ -227,7 +230,7 @@ func displayName(serial, _ string) string {
 		return serial
 	}
 
-	return "OpenVLM device"
+	return genericDeviceName
 }
 
 func msgIdentified(name string) string {

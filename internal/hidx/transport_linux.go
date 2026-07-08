@@ -29,11 +29,14 @@ type linuxBackend struct {
 func newBackend() Backend {
 	return &linuxBackend{
 		sysRoot: os.DirFS("/sys"),
-		devRoot: "/dev",
+		devRoot: devDir,
 	}
 }
 
-const usbDevicesDir = "bus/usb/devices"
+const (
+	devDir        = "/dev"
+	usbDevicesDir = "bus/usb/devices"
+)
 
 func (b *linuxBackend) Enumerate(vendorID, productID uint16) ([]DeviceInfo, error) {
 	entries, err := fs.ReadDir(b.sysRoot, usbDevicesDir)
@@ -48,7 +51,10 @@ func (b *linuxBackend) Enumerate(vendorID, productID uint16) ([]DeviceInfo, erro
 	results := make([]DeviceInfo, 0, 4)
 
 	for _, e := range entries {
-		if !e.IsDir() {
+		// On real sysfs every entry here is a symlink into /sys/devices/...,
+		// so IsDir() alone would skip all of them; follow symlinks too and
+		// let the idVendor read reject anything that isn't a device dir.
+		if !e.IsDir() && e.Type()&fs.ModeSymlink == 0 {
 			continue
 		}
 
