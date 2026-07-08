@@ -166,8 +166,13 @@ func (d *linuxDevice) Close() error {
 
 // HIDIOCGINPUT(len) and HIDIOCSOUTPUT(len) encodings from <linux/hidraw.h>.
 //
-//	HIDIOCGINPUT(len)  = _IOC(_IOC_READ|_IOC_WRITE, 'H', 0x07, len)
+//	HIDIOCGINPUT(len)  = _IOC(_IOC_READ|_IOC_WRITE, 'H', 0x0A, len)
 //	HIDIOCSOUTPUT(len) = _IOC(_IOC_READ|_IOC_WRITE, 'H', 0x0B, len)
+//
+// Careful with the NR values: 0x07 is HIDIOCGFEATURE, not HIDIOCGINPUT.
+// Issuing GFEATURE against the CM108B makes the chip stall the control
+// transfer (it has no feature report) and the ioctl fails with EPIPE.
+// HIDIOCGINPUT/HIDIOCSOUTPUT need Linux ≥ 5.11.
 //
 // We open-code the macros so we don't drag in any C headers.
 const (
@@ -175,7 +180,7 @@ const (
 	iocWrite   = 1
 	iocDirBits = uint32(iocRead | iocWrite) // bidirectional
 	iocTypeH   = uint32('H')
-	hidiocNRGI = uint32(0x07)
+	hidiocNRGI = uint32(0x0A)
 	hidiocNRSO = uint32(0x0B)
 )
 

@@ -15,19 +15,22 @@ import (
 )
 
 // TestHidioc_Encoding (Phase C3) pins the ioctl-number computation against
-// hand-computed values. _IOC(_IOC_READ|_IOC_WRITE, 'H', NR, len) per
-// <asm-generic/ioctl.h>:
+// values taken from <linux/hidraw.h> — NOT hand-derived. An earlier
+// hand-derived pin used NR 0x07 for HIDIOCGINPUT, but 0x07 is
+// HIDIOCGFEATURE; the CM108B stalls GET_REPORT(Feature), so every GPIO
+// probe and EEPROM read failed with EPIPE on real hardware.
+// _IOC(_IOC_READ|_IOC_WRITE, 'H', NR, len) per <asm-generic/ioctl.h>:
 //
 //	dir   = 3 (read|write)  → << 30
 //	size  = len             → << 16
 //	type  = 'H' = 0x48      → << 8
-//	nr    = NR
+//	nr    = 0x0A (HIDIOCGINPUT) / 0x0B (HIDIOCSOUTPUT)
 //
-// HIDIOCGINPUT(5)  = 0xC0054807
+// HIDIOCGINPUT(5)  = 0xC005480A
 // HIDIOCSOUTPUT(5) = 0xC005480B
 //
-// A regression here means every Linux EEPROM read/write fails with EINVAL
-// at runtime, so the test pinning is worth its weight.
+// A regression here means every Linux EEPROM read/write fails at runtime,
+// so the test pinning is worth its weight.
 func TestHidioc_Encoding(t *testing.T) {
 	t.Parallel()
 
@@ -36,9 +39,9 @@ func TestHidioc_Encoding(t *testing.T) {
 		got  uintptr
 		want uintptr
 	}{
-		{"HIDIOCGINPUT(5)", hidiocginput(5), 0xC0054807},
+		{"HIDIOCGINPUT(5)", hidiocginput(5), 0xC005480A},
 		{"HIDIOCSOUTPUT(5)", hidiocsoutput(5), 0xC005480B},
-		{"HIDIOCGINPUT(8)", hidiocginput(8), 0xC0084807},
+		{"HIDIOCGINPUT(8)", hidiocginput(8), 0xC008480A},
 		{"HIDIOCSOUTPUT(8)", hidiocsoutput(8), 0xC008480B},
 	}
 
