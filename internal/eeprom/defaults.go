@@ -29,7 +29,7 @@ var OpenVLMDefaults = View{
 	ManufacturerString: "BuildsByShane",
 
 	// Word 0x2A — datasheet defaults.
-	DACInitVolume:        -10,
+	DACInitVolume:        0,
 	ADCInitVolume:        8,
 	DACMaxMinVolumeValid: false,
 	ADCMaxMinVolumeValid: false,
@@ -43,7 +43,7 @@ var OpenVLMDefaults = View{
 	MicHighPassFilter: true,
 	MicPLLAdjust:      false,
 	MicBoost:          true,
-	DACOutput:         DACOutputSpeaker,
+	DACOutput:         DACOutputHeadset,
 	HIDEnable:         true,
 	RemoteWakeup:      false,
 
